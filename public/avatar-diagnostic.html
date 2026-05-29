@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Диагностика аватара</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #eee;
+        }
+        h1 { color: #d4af37; }
+        .section {
+            background: #16213e;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #d4af37;
+        }
+        button {
+            background: #d4af37;
+            color: #1a1a2e;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+        }
+        button:hover {
+            background: #f0c674;
+        }
+        pre {
+            background: #0f1419;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            color: #00ff00;
+        }
+        .error {
+            color: #ff4444;
+        }
+        .success {
+            color: #00ff00;
+        }
+        .warning {
+            color: #ffaa00;
+        }
+        .avatar-preview {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin: 10px 0;
+            background: linear-gradient(135deg, #d4af37, #f0c674);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            font-weight: bold;
+            overflow: hidden;
+            position: relative;
+        }
+        .avatar-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Диагностика отображения аватара</h1>
+    
+    <div class="section">
+        <h2>Шаг 1: Проверка API /api/me</h2>
+        <button onclick="checkApiMe()">Проверить /api/me</button>
+        <div id="apiResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>Шаг 2: Проверка загрузки файла аватара</h2>
+        <input type="file" id="avatarFile" accept="image/*">
+        <button onclick="testAvatarUpload()">Загрузить тестовый аватар</button>
+        <div id="uploadResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>Шаг 3: Предпросмотр аватара</h2>
+        <div id="avatarPreview"></div>
+    </div>
+
+    <div class="section">
+        <h2>Шаг 4: Проверка структуры HTML</h2>
+        <button onclick="checkHtmlStructure()">Проверить HTML в главной странице</button>
+        <div id="htmlCheck"></div>
+    </div>
+
+    <script>
+        async function checkApiMe() {
+            const result = document.getElementById('apiResult');
+            result.innerHTML = '<p>⏳ Проверяю...</p>';
+            
+            try {
+                const response = await fetch('/api/me', {
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    result.innerHTML = `<p class="error">❌ Ошибка: ${response.status} - Возможно вы не авторизованы</p>`;
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                result.innerHTML = `
+                    <p class="success">✅ Ответ получен успешно</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                    <h3>Анализ:</h3>
+                    <ul>
+                        <li>ID пользователя: <strong>${data.id || '❌ Отсутствует'}</strong></li>
+                        <li>Username: <strong>${data.username || '❌ Отсутствует'}</strong></li>
+                        <li>Email: <strong>${data.email || '❌ Отсутствует'}</strong></li>
+                        <li>Role: <strong>${data.role || '❌ Отсутствует'}</strong></li>
+                        <li>Avatar: ${data.avatar ? 
+                            `<span class="success">✅ ${data.avatar}</span>` : 
+                            `<span class="warning">⚠️ Отсутствует (null)</span>`
+                        }</li>
+                    </ul>
+                `;
+                
+                // Показываем предпросмотр аватара
+                showAvatarPreview(data);
+                
+            } catch (error) {
+                result.innerHTML = `<p class="error">❌ Ошибка запроса: ${error.message}</p>`;
+            }
+        }
+
+        function showAvatarPreview(userData) {
+            const preview = document.getElementById('avatarPreview');
+            
+            if (userData.avatar && userData.avatar.trim() !== '') {
+                // Проверяем доступность изображения
+                const img = new Image();
+                img.onload = function() {
+                    preview.innerHTML = `
+                        <p class="success">✅ Аватар загружается успешно</p>
+                        <div class="avatar-preview">
+                            <img src="${userData.avatar}" alt="${userData.username}">
+                        </div>
+                        <p>Путь: <code>${userData.avatar}</code></p>
+                    `;
+                };
+                img.onerror = function() {
+                    preview.innerHTML = `
+                        <p class="error">❌ Файл аватара не найден по пути: ${userData.avatar}</p>
+                        <p class="warning">Проверьте, существует ли файл на сервере</p>
+                    `;
+                };
+                img.src = userData.avatar;
+            } else {
+                preview.innerHTML = `
+                    <p class="warning">⚠️ У пользователя нет загруженного аватара</p>
+                    <div class="avatar-preview">
+                        ${userData.username ? userData.username[0].toUpperCase() : '?'}
+                    </div>
+                    <p>Показывается первая буква имени: <strong>${userData.username ? userData.username[0].toUpperCase() : '?'}</strong></p>
+                `;
+            }
+        }
+
+        async function testAvatarUpload() {
+            const fileInput = document.getElementById('avatarFile');
+            const result = document.getElementById('uploadResult');
+            
+            if (!fileInput.files || !fileInput.files[0]) {
+                result.innerHTML = '<p class="error">❌ Выберите файл для загрузки</p>';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            
+            // Проверка размера
+            if (file.size > 5 * 1024 * 1024) {
+                result.innerHTML = '<p class="error">❌ Файл слишком большой (максимум 5MB)</p>';
+                return;
+            }
+            
+            // Проверка типа
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                result.innerHTML = '<p class="error">❌ Неподдерживаемый формат файла</p>';
+                return;
+            }
+            
+            result.innerHTML = '<p>⏳ Загружаю аватар...</p>';
+            
+            const formData = new FormData();
+            formData.append('avatar', file);
+            
+            try {
+                const response = await fetch('/api/users/avatar', {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    result.innerHTML = `<p class="error">❌ Ошибка загрузки: ${error.error || 'Неизвестная ошибка'}</p>`;
+                    return;
+                }
+                
+                const data = await response.json();
+                result.innerHTML = `
+                    <p class="success">✅ Аватар успешно загружен!</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                    <p>Теперь проверьте /api/me снова (Шаг 1)</p>
+                `;
+                
+            } catch (error) {
+                result.innerHTML = `<p class="error">❌ Ошибка: ${error.message}</p>`;
+            }
+        }
+
+        function checkHtmlStructure() {
+            const result = document.getElementById('htmlCheck');
+            
+            // Проверяем наличие нужных элементов на главной странице
+            fetch('/')
+                .then(r => r.text())
+                .then(html => {
+                    const hasUserAvatar = html.includes('id="userAvatar"');
+                    const hasUserRoleBadge = html.includes('id="userRoleBadge"');
+                    const hasUserName = html.includes('id="userName"');
+                    
+                    result.innerHTML = `
+                        <ul>
+                            <li>${hasUserAvatar ? '✅' : '❌'} Элемент #userAvatar найден</li>
+                            <li>${hasUserRoleBadge ? '✅' : '❌'} Элемент #userRoleBadge найден</li>
+                            <li>${hasUserName ? '✅' : '❌'} Элемент #userName найден</li>
+                        </ul>
+                        <p>${hasUserAvatar && hasUserRoleBadge && hasUserName ? 
+                            '<span class="success">✅ Все необходимые элементы присутствуют</span>' : 
+                            '<span class="error">❌ Некоторые элементы отсутствуют</span>'
+                        }</p>
+                    `;
+                })
+                .catch(error => {
+                    result.innerHTML = `<p class="error">❌ Ошибка проверки: ${error.message}</p>`;
+                });
+        }
+
+        // Автоматически проверяем при загрузке страницы
+        window.onload = () => {
+            checkApiMe();
+        };
+    </script>
+</body>
+</html>

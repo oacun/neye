@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Игольное ушко</title>
+    <!-- Quill Rich Text Editor -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <!-- Google reCAPTCHA v2 (для регистрации) -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <h1 class="logo">ИГОЛЬНОЕ УШКО</h1>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-content">
+            <div class="nav-links">
+                <a class="nav-link active" data-page="news">Новости</a>
+                <a class="nav-link" data-page="forum">Форум</a>
+                <a class="nav-link" href="#" onclick="openSearchModal(); return false;">Поиск</a>
+                <a class="nav-link" data-page="messages" id="messagesLink" style="display: none;">
+                    Сообщения <span class="unread-badge" id="unreadBadge" style="display: none;">0</span>
+                </a>
+            </div>
+            <div class="auth-section">
+                <button class="auth-btn" id="loginBtn">Вход</button>
+                <button class="auth-btn" id="registerBtn">Регистрация</button>
+                <div class="user-profile" id="userProfile">
+                    <div class="user-avatar" id="userAvatar">
+                        А
+                        <div class="user-role-badge role-user" id="userRoleBadge">U</div>
+                    </div>
+                    <span class="user-name" id="userName" style="cursor: pointer;">Пользователь</span>
+                    <button class="auth-btn" id="logoutBtn">Выход</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Admin Panel -->
+        <div class="admin-panel" id="adminPanel">
+            <div class="admin-tabs">
+                <button class="admin-tab active" onclick="switchAdminTab('news')">Новости</button>
+                <button class="admin-tab" onclick="switchAdminTab('categories')">Категории новостей</button>
+                <button class="admin-tab" onclick="switchAdminTab('subsections')">Подразделы форума</button>
+                <button class="admin-tab" onclick="switchAdminTab('users')">Пользователи</button>
+                <button class="admin-tab" onclick="switchAdminTab('modlog')">Журнал</button>
+            </div>
+            
+            <!-- News Tab -->
+            <div class="admin-tab-content active" id="adminTabNews">
+                <h2>Создать новость</h2>
+                <form id="newsForm">
+                    <div class="form-group">
+                        <label>Категория:</label>
+                        <select id="newsCategory" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Заголовок:</label>
+                        <input type="text" id="newsTitle" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Содержание:</label>
+                        <div id="newsEditor" style="height: 300px; background: var(--bg-primary);"></div>
+                    </div>
+                    <button type="submit" class="btn-submit">Опубликовать</button>
+                </form>
+            </div>
+            
+            <!-- News Categories Tab -->
+            <div class="admin-tab-content" id="adminTabCategories">
+                <h2>Управление категориями новостей</h2>
+                <button class="btn-submit" onclick="showNewCategoryModal()">Создать категорию</button>
+                <div class="category-list" id="newsCategoryList"></div>
+            </div>
+            
+            <!-- Forum Subsections Tab -->
+            <div class="admin-tab-content" id="adminTabSubsections">
+                <h2>Управление подразделами форума</h2>
+                <div id="subsectionsManagement"></div>
+            </div>
+            
+            <!-- Users Tab -->
+            <div class="admin-tab-content" id="adminTabUsers">
+                <h2>Управление пользователями</h2>
+                <div class="user-list" id="userList"></div>
+            </div>
+            
+            <!-- Mod Log Tab -->
+            <div class="admin-tab-content" id="adminTabModlog">
+                <h2>Журнал модерации</h2>
+                <div id="modLogList"></div>
+            </div>
+        </div>
+
+        <!-- News Feed -->
+        <div class="news-feed" id="newsFeed"></div>
+
+        <!-- Single News Item View -->
+        <div id="newsItemView" style="display: none;">
+            <button class="back-btn" onclick="backToNews()">← Вернуться к новостям</button>
+            <div id="newsItemContainer"></div>
+        </div>
+
+        <!-- Forum Main View -->
+        <div class="forum-container" id="forumContainer">
+            <div id="forumSections"></div>
+        </div>
+
+        <!-- Subsection View -->
+        <div class="subsection-view" id="subsectionView" style="display: none;">
+            <button class="back-btn" onclick="backToForum()">← Назад к разделам</button>
+            <div class="subsection-header">
+                <h1 class="subsection-title" id="subsectionTitle"></h1>
+                <p class="subsection-description" id="subsectionDescription"></p>
+            </div>
+            
+            <div class="topic-controls">
+                <button class="btn-submit" onclick="showNewTopicModal()">Создать тему</button>
+                <div class="sort-controls">
+                    <label>Сортировка:</label>
+                    <select id="topicSort" onchange="loadTopics(currentSubsectionId, 0, this.value)">
+                        <option value="updated">Последние обновления</option>
+                        <option value="created">Дата создания</option>
+                        <option value="views">Просмотры</option>
+                        <option value="replies">Ответы</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="topics-container" id="topicsContainer"></div>
+            <div class="load-more-container" id="loadMoreContainer" style="display: none;">
+                <button class="btn-submit" onclick="loadMoreTopics()">Загрузить еще</button>
+            </div>
+        </div>
+
+        <!-- Topic View -->
+        <div class="topic-view" id="topicView" style="display: none;">
+            <button class="back-btn" onclick="backToSubsection()">← Назад к темам</button>
+            <div class="topic-header">
+                <div class="topic-breadcrumb" id="topicBreadcrumb"></div>
+                <h1 class="topic-view-title" id="topicViewTitle"></h1>
+                <div class="topic-meta" id="topicViewMeta"></div>
+                <div class="topic-admin-controls" id="topicAdminControls" style="display: none;">
+                    <button class="btn-small" onclick="editTopic()">Редактировать</button>
+                    <button class="btn-danger btn-small" onclick="deleteTopic()">Удалить</button>
+                </div>
+            </div>
+            <div class="posts-container" id="postsContainer"></div>
+            <div class="reply-form" id="replyForm" style="display: none;">
+                <h3>Ответить</h3>
+                <div id="replyEditor" style="height: 200px; background: var(--bg-primary);"></div>
+                <button class="btn-submit" onclick="submitReply()" style="margin-top: 1rem;">Отправить</button>
+            </div>
+        </div>
+
+        <!-- User Profile View -->
+        <div class="profile-view" id="profileView" style="display: none;">
+            <button class="back-btn" onclick="backFromProfile()">← Назад</button>
+            <div class="profile-container">
+                <div class="profile-header">
+                    <div class="profile-avatar" id="profileAvatar">U</div>
+                    <div class="profile-info">
+                        <h1 class="profile-username" id="profileUsername"></h1>
+                        <p class="profile-role" id="profileRole"></p>
+                        <p class="profile-joined">Регистрация: <span id="profileJoined"></span></p>
+                    </div>
+                </div>
+                
+                <div class="profile-stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="profileTopics">0</div>
+                        <div class="stat-label">Тем создано</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="profilePosts">0</div>
+                        <div class="stat-label">Сообщений</div>
+                    </div>
+                </div>
+                
+                <div class="profile-bio">
+                    <h3>О себе</h3>
+                    <p id="profileBioText">Информация не указана</p>
+                </div>
+                
+                <div class="profile-edit-section" id="profileEditSection" style="display: none;">
+                    <h3>Редактировать профиль</h3>
+                    
+                    <!-- Avatar Upload -->
+                    <div class="form-group">
+                        <label>Аватар:</label>
+                        <div class="avatar-upload-section">
+                            <input type="file" id="avatarUpload" accept="image/*" style="display: none;" onchange="uploadAvatar(this)">
+                            <label for="avatarUpload" class="btn-submit" style="cursor: pointer; display: inline-block;">
+                                Загрузить аватар
+                            </label>
+                            <button type="button" class="btn-delete" onclick="deleteAvatar()" style="margin-left: 10px;">
+                                Удалить аватар
+                            </button>
+                            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                Максимум 5MB. Форматы: JPEG, PNG, GIF, WebP
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <form id="profileEditForm">
+                        <div class="form-group">
+                            <label>О себе:</label>
+                            <textarea id="profileEditBio" rows="5"></textarea>
+                        </div>
+                        <button type="submit" class="btn-submit">Сохранить</button>
+                    </form>
+                    
+                    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border-subtle);">
+                        <h3>Безопасность</h3>
+                        <button type="button" class="btn-submit" onclick="openChangePasswordModal()">Сменить пароль</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages View -->
+        <div class="messages-view" id="messagesView" style="display: none;">
+            <div class="messages-header">
+                <h1>Личные сообщения</h1>
+                <button class="btn-submit" onclick="showNewMessageModal()">Написать сообщение</button>
+            </div>
+            
+            <div class="messages-tabs">
+                <button class="messages-tab active" onclick="switchMessagesTab('inbox')">
+                    Входящие <span id="inboxCount">(0)</span>
+                </button>
+                <button class="messages-tab" onclick="switchMessagesTab('sent')">
+                    Отправленные <span id="sentCount">(0)</span>
+                </button>
+            </div>
+            
+            <div class="messages-container">
+                <div class="messages-list" id="messagesList"></div>
+            </div>
+            
+            <!-- Message Detail View -->
+            <div class="message-detail" id="messageDetail" style="display: none;">
+                <button class="back-btn" onclick="backToMessagesList()">← Назад к сообщениям</button>
+                <div id="messageDetailContent"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    
+    <!-- Login Modal -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('loginModal')">&times;</button>
+            <h2>Вход</h2>
+            <div id="loginError" class="error-message" style="display: none;"></div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Логин:</label>
+                    <input type="text" id="loginUsername" required>
+                </div>
+                <div class="form-group">
+                    <label>Пароль:</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <button type="submit" class="btn-submit">Войти</button>
+                <div style="margin-top: 1rem; text-align: center;">
+                    <a href="#" onclick="openForgotPasswordModal(); return false;" style="color: var(--accent-gold); font-size: 0.9rem;">Забыли пароль?</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div class="modal" id="registerModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('registerModal')">&times;</button>
+            <h2>Регистрация</h2>
+            <div id="registerError" class="error-message" style="display: none;"></div>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label>Логин:</label>
+                    <input type="text" id="registerUsername" required>
+                </div>
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="registerEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Пароль:</label>
+                    <input type="password" id="registerPassword" required>
+                </div>
+                <div class="form-group">
+                    <div class="g-recaptcha" id="recaptchaWidget" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"></div>
+                </div>
+                <button type="submit" class="btn-submit">Зарегистрироваться</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- New Topic Modal -->
+    <div class="modal" id="newTopicModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('newTopicModal')">&times;</button>
+            <h2>Создать новую тему</h2>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;" id="topicLimitInfo">
+                Вы можете создавать не более 5 тем в неделю
+            </p>
+            <form id="newTopicForm">
+                <div class="form-group">
+                    <label>Название темы:</label>
+                    <input type="text" id="topicTitle" required>
+                </div>
+                <button type="submit" class="btn-submit">Создать</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- New Category Modal -->
+    <div class="modal" id="newCategoryModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('newCategoryModal')">&times;</button>
+            <h2>Создать категорию новостей</h2>
+            <form id="newCategoryForm">
+                <div class="form-group">
+                    <label>Название:</label>
+                    <input type="text" id="categoryName" required>
+                </div>
+                <div class="form-group">
+                    <label>Slug (латиницей):</label>
+                    <input type="text" id="categorySlug" required pattern="[a-z0-9-]+">
+                </div>
+                <div class="form-group">
+                    <label>Цвет:</label>
+                    <input type="color" id="categoryColor" value="#8b4789" required>
+                </div>
+                <button type="submit" class="btn-submit">Создать</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Subsection Modal -->
+    <div class="modal" id="editSubsectionModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('editSubsectionModal')">&times;</button>
+            <h2 id="editSubsectionTitle">Редактировать подраздел</h2>
+            <form id="editSubsectionForm">
+                <input type="hidden" id="editSubsectionId">
+                <input type="hidden" id="editSubsectionSectionId">
+                <div class="form-group">
+                    <label>Название:</label>
+                    <input type="text" id="editSubsectionName" required>
+                </div>
+                <div class="form-group">
+                    <label>Описание:</label>
+                    <textarea id="editSubsectionDesc" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn-submit">Сохранить</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Topic Modal -->
+    <div class="modal" id="editTopicModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('editTopicModal')">&times;</button>
+            <h2>Редактировать тему</h2>
+            <form id="editTopicForm">
+                <div class="form-group">
+                    <label>Название:</label>
+                    <input type="text" id="editTopicTitle" required>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="editTopicPinned">
+                        Закрепить тему
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="editTopicLocked">
+                        Закрыть для комментариев
+                    </label>
+                </div>
+                <button type="submit" class="btn-submit">Сохранить</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- New Message Modal -->
+    <div class="modal" id="newMessageModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('newMessageModal')">&times;</button>
+            <h2>Написать сообщение</h2>
+            <div id="messageError" class="error-message" style="display: none;"></div>
+            <form id="newMessageForm">
+                <div class="form-group">
+                    <label>Получатель (имя пользователя):</label>
+                    <input type="text" id="messageRecipient" required placeholder="Введите имя пользователя">
+                </div>
+                <div class="form-group">
+                    <label>Тема:</label>
+                    <input type="text" id="messageSubject" required placeholder="Тема сообщения">
+                </div>
+                <div class="form-group">
+                    <label>Сообщение:</label>
+                    <textarea id="messageContent" rows="8" required placeholder="Ваше сообщение..."></textarea>
+                </div>
+                <button type="submit" class="btn-submit">Отправить</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div class="modal" id="forgotPasswordModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('forgotPasswordModal')">&times;</button>
+            <h2>Восстановление пароля</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                Введите email, указанный при регистрации. Мы отправим инструкции по восстановлению пароля.
+            </p>
+            <div id="forgotPasswordError" class="error-message" style="display: none;"></div>
+            <div id="forgotPasswordSuccess" class="success-message" style="display: none;"></div>
+            <form id="forgotPasswordForm">
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="forgotPasswordEmail" required placeholder="your@email.com">
+                </div>
+                <button type="submit" class="btn-submit">Отправить</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal" id="changePasswordModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('changePasswordModal')">&times;</button>
+            <h2>Смена пароля</h2>
+            <div id="changePasswordError" class="error-message" style="display: none;"></div>
+            <div id="changePasswordSuccess" class="success-message" style="display: none;"></div>
+            <form id="changePasswordForm">
+                <div class="form-group">
+                    <label>Текущий пароль:</label>
+                    <input type="password" id="currentPassword" required>
+                </div>
+                <div class="form-group">
+                    <label>Новый пароль:</label>
+                    <input type="password" id="newPassword" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label>Подтвердите новый пароль:</label>
+                    <input type="password" id="confirmPassword" required minlength="6">
+                </div>
+                <button type="submit" class="btn-submit">Изменить пароль</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Search Modal -->
+    <div class="modal" id="searchModal">
+        <div class="modal-content" style="max-width: 800px;">
+            <button class="modal-close" onclick="closeModal('searchModal')">&times;</button>
+            <h2>Поиск</h2>
+            <div class="form-group">
+                <input type="text" id="searchInput" placeholder="Поиск по темам, постам, пользователям..." style="font-size: 1.1rem;">
+            </div>
+            <div id="searchResults"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
